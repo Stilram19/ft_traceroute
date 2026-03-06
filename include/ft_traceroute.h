@@ -1,6 +1,7 @@
 #ifndef FT_TRACEROUTE_H
 #define FT_TRACEROUTE_H
 
+#include "macros.h"
 #include <netinet/in.h>
 #include <stdint.h>
 
@@ -21,17 +22,25 @@ typedef struct {
 } icmp_echo_t;
 
 typedef struct traceroute_state {
-    int sock_fd;
-    char *display_address; // parsed IPv4 address (clean)
+    int icmp_sock_fd; // socket used to receive ICMP error messages
+    int method_sock_fd; // socket used to send probes and receive responses in methods like TCP method
+    char display_address[MAX_IPV4_ADDR_LEN + 1]; // parsed IPv4 address (clean)
  
     // network addressing
-    struct sockaddr_in dest_addr;       // destination socket address
-    char *hostname;                     // hostname/IPv4 address input
+    uint16_t sport;
+    uint16_t dport;
+    char *hostname;                     // hostname/IPv4 address input (destination host/ip)
+    char local_address[MAX_IPV4_ADDR_LEN + 1];        // local interface
+    struct in_addr daddr;        // destination address
  
-    // packet structure & pre-allocated and sized
+    // icmp echo packet structure & pre-allocated and sized
     icmp_echo_t packet;        // contains header + data pointer + data length
     size_t packet_len; 
     char *program_name;
+
+    int dont_fragment; // set to 1 if don't fragment is specified through -F or --dont-fragment
+
+    int method;         // UDP (default), TCP (if specified through -T option)
 } traceroute_state_t;
 
 #endif

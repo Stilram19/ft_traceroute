@@ -1,2 +1,3 @@
 (*) traceroute manipulates TTL field (in ip header), to trigger ICMP time exceeded message from routers along the packet path
 (*) There's no timer in networking, there's only TTL (TTL measures time in hops not in seconds/milliseconds)
+(*) [33434 - 33534] port range is officially IANA-assigned to traceroute

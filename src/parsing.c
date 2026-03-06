@@ -31,7 +31,23 @@ static int is_all_digits(const char *str) {
 void print_help(char *program_name) {
     printf("Usage: %s [options] <hostname/IP>\n\n", program_name);
     printf("Options:\n");
-    printf("  -h            Show this help message\n");
+    printf("  --help                    Read this help and exit\n");
+    printf("  -F  --dont-fragment       Do not fragment packets\n");
+    printf("  -T  --tcp                 Use TCP SYN for tracerouting (default port is 80)\n");
+    printf("  -I  --icmp                Use ICMP ECHO for tracerouting\n");
+    printf("  -U  --udp                 Use UDP to particular port for tracerouting\n"
+           "                            (instead of increasing the port per each probe),\n"
+           "                            default port is 53\n");
+    printf("  -D  --dccp                Use DCCP Request for tracerouting\n"
+           "                            (default port is 33434)\n");
+    printf("  -p port                   Set the destination port to use. It is either\n"
+           "                            initial udp port value for \"default\" method\n"
+           "                            (incremented by each probe, default is 33434), or\n"
+           "                            initial seq for \"icmp\" (incremented as well,\n"
+           "                            default from 1), or some constant destination\n"
+           "                            port for other methods (with default of 80 for\n"
+           "                            \"tcp\", 53 for \"udp\", etc.)\n");
+    printf("  -sp num                   Use source port num for outgoing packets.\n");
 }
 
 int parse_packet_len(char *arg, int *packet_len) {
@@ -125,13 +141,81 @@ int parse_options(int argc, char **argv) {
     }
 
     int opt_index = 1;
+    int port_specified = 0;
 
     while (opt_index < argc && argv[opt_index][0] == '-') {
         char *arg = argv[opt_index];
 
-        if (strcmp(arg, "-h") == 0) {
+        if (strcmp(arg, "--help") == 0) {
             print_help(argv[0]);
             exit(EXIT_SUCCESS);
+        } else if (strcmp(arg, "-T") == 0 || strcmp(arg, "--tcp") == 0) {
+            state.method = TCP_TRACEROUTE;
+            // set port to tcp default (80) only if port wasn't already specified by -p
+            if (!port_specified) {
+                state.dport = DEFAULT_TCP_PORT;
+            }
+        } else if (strcmp(arg, "-F") == 0 || strcmp(arg, "--dont-fragment") == 0) {
+            state.dont_fragment = 1;
+        } else if (strcmp(arg, "-I") == 0 || strcmp(arg, "--icmp") == 0) {
+            state.method = ICMP_TRACEROUTE;
+        } else if (strcmp(arg, "-U") == 0 || strcmp(arg, "--udp") == 0) {
+            state.method = FIXED_UDP_TRACEROUTE;
+            // set port to 'fixed udp' default (53) only if port wasn't already specified by -p
+            if (!port_specified) {
+                state.dport = DEFAULT_FIXED_UDP_PORT;
+            }
+        } else if (strcmp(arg, "-D") == 0 || strcmp(arg, "--dccp") == 0) {
+            state.method = DCCP_TRACEROUTE;
+        } else if (strcmp(arg, "-p") == 0) {
+            // Check if there's a next argument
+            if (opt_index + 1 >= argc) {
+                char msg[MAX_ERROR_MSG_SIZE];
+                snprintf(msg, MAX_ERROR_MSG_SIZE, "Option `-p' (argc %d) requires an argument: `-p port'", opt_index);
+                errorLogger(msg, TRACEROUTE_EX_USAGE);
+            }
+ 
+            char *value_str = argv[++opt_index];
+ 
+            // check if it's all digits
+            if (!is_all_digits(value_str)) {
+                char msg[MAX_ERROR_MSG_SIZE];
+                snprintf(msg, MAX_ERROR_MSG_SIZE, "Cannot handle `-p' option with arg `%s' (argc %d)", value_str, opt_index - 1);
+                errorLogger(msg, TRACEROUTE_EX_USAGE);
+            }
+ 
+            int value = atoi(value_str);
+ 
+            if (value < 0 || value > MAX_PORT_NUMBER) {
+                errorLogger("-p: value too large", EX_USAGE);
+            }
+ 
+            port_specified = 1;
+            state.dport = value;
+        } else if (strcmp(arg, "-sp") == 0) {
+            // check if there's a next argument
+            if (opt_index + 1 >= argc) {
+                char msg[MAX_ERROR_MSG_SIZE];
+                snprintf(msg, MAX_ERROR_MSG_SIZE, "Option `-sp' (argc %d) requires an argument: `-sp port'", opt_index);
+                errorLogger(msg, TRACEROUTE_EX_USAGE);
+            }
+ 
+            char *value_str = argv[++opt_index];
+ 
+            // check if it's all digits
+            if (!is_all_digits(value_str)) {
+                char msg[MAX_ERROR_MSG_SIZE];
+                snprintf(msg, MAX_ERROR_MSG_SIZE, "Cannot handle `-sp' option with arg `%s' (argc %d)", value_str, opt_index - 1);
+                errorLogger(msg, TRACEROUTE_EX_USAGE);
+            }
+ 
+            int value = atoi(value_str);
+ 
+            if (value < 0 || value > MAX_PORT_NUMBER) {
+                errorLogger("-sp: value too large", EX_USAGE);
+            }
+ 
+            state.sport = value;
         } else {
             char msg[MAX_ERROR_MSG_SIZE];
             snprintf(msg, MAX_ERROR_MSG_SIZE, "Bad option `%s' (argc %d)", argv[opt_index], opt_index);
