@@ -32,7 +32,6 @@ void print_help(char *program_name) {
     printf("Usage: %s [options] <hostname/IP>\n\n", program_name);
     printf("Options:\n");
     printf("  --help                    Read this help and exit\n");
-    printf("  -F  --dont-fragment       Do not fragment packets\n");
     printf("  -T  --tcp                 Use TCP SYN for tracerouting (default port is 80)\n");
     printf("  -I  --icmp                Use ICMP ECHO for tracerouting\n");
     printf("  -U  --udp                 Use UDP to particular port for tracerouting\n"
@@ -62,6 +61,28 @@ int parse_packet_len(char *arg, int *packet_len) {
         char msg[MAX_ERROR_MSG_SIZE];
         snprintf(msg, MAX_ERROR_MSG_SIZE, "too big packetlen %s specified", arg);
         errorLogger(msg, EX_USAGE);
+    }
+
+    switch (state.method) {
+        case TCP_TRACEROUTE:
+            if (*packet_len < MIN_TCP_PACKET_LEN) {
+                *packet_len = MIN_TCP_PACKET_LEN;
+            }
+            break;
+        case DCCP_TRACEROUTE:
+            if (*packet_len < MIN_DCCP_PACKET_LEN) {
+                *packet_len = MIN_DCCP_PACKET_LEN;
+            }
+            break;
+        case ICMP_TRACEROUTE:
+            if (*packet_len < MIN_ICMP_PACKET_LEN) {
+                *packet_len = MIN_ICMP_PACKET_LEN;
+            }
+            break;
+        default:
+            if (*packet_len < MIN_UDP_PACKET_LEN) {
+                *packet_len = MIN_UDP_PACKET_LEN;
+            }
     }
 
     return (PARSE_OK);
@@ -153,17 +174,15 @@ int parse_options(int argc, char **argv) {
             state.method = TCP_TRACEROUTE;
             // set port to tcp default (80) only if port wasn't already specified by -p
             if (!port_specified) {
-                state.dport = DEFAULT_TCP_PORT;
+                state.curr_dport = DEFAULT_TCP_PORT;
             }
-        } else if (strcmp(arg, "-F") == 0 || strcmp(arg, "--dont-fragment") == 0) {
-            state.dont_fragment = 1;
         } else if (strcmp(arg, "-I") == 0 || strcmp(arg, "--icmp") == 0) {
             state.method = ICMP_TRACEROUTE;
         } else if (strcmp(arg, "-U") == 0 || strcmp(arg, "--udp") == 0) {
             state.method = FIXED_UDP_TRACEROUTE;
             // set port to 'fixed udp' default (53) only if port wasn't already specified by -p
             if (!port_specified) {
-                state.dport = DEFAULT_FIXED_UDP_PORT;
+                state.curr_dport = DEFAULT_FIXED_UDP_PORT;
             }
         } else if (strcmp(arg, "-D") == 0 || strcmp(arg, "--dccp") == 0) {
             state.method = DCCP_TRACEROUTE;
@@ -191,7 +210,7 @@ int parse_options(int argc, char **argv) {
             }
  
             port_specified = 1;
-            state.dport = value;
+            state.curr_dport = value;
         } else if (strcmp(arg, "-sp") == 0) {
             // check if there's a next argument
             if (opt_index + 1 >= argc) {

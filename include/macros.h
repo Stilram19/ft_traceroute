@@ -23,11 +23,17 @@
 #define DEFAULT_REPLY_TIMEOUT 5 // 5 seconds
 #define DEFAULT_PACKET_LEN 60 // 60 bytes by default for ipv4 (we're only supporting ipv4)
 #define DEFAULT_NUM_OF_PROBS 3 // 3 probs sent to each TTL setting
-#define DEFAULT_MAX_HOPS 30
+#define DEFAULT_MAX_TTL 30
 #define DEFAULT_DEST_PORT 33434 // default destination base port for probes
 #define DEFAULT_SRC_PORT 33434 // default source ports (using only raw sockets in this implementation we need to choose a default source port)
 #define DEFAULT_TCP_PORT 80
 #define DEFAULT_FIXED_UDP_PORT 53
+
+// minimum packet length per method
+#define MIN_TCP_PACKET_LEN   40   // 20 IP + 20 TCP
+#define MIN_DCCP_PACKET_LEN  36   // 20 IP + 16 DCCP request
+#define MIN_ICMP_PACKET_LEN  28   // 20 IP + 8 ICMP
+#define MIN_UDP_PACKET_LEN   28   // 20 IP + 8 UDP
 
 // exit status codes
 #define TRACEROUTE_EX_USAGE 2

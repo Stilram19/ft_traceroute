@@ -3,6 +3,7 @@
 #include "parsing.h"
 #include "socket.h"
 #include "utils.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,9 +19,13 @@ int main(int argc, char **argv) {
 
     state.program_name = argv[0];
     state.method = DEFAULT_UDP_TRACEROUTE; // setting method to UDP (default), if -T option is specified method will be set to TCP_TRACEROUTE
-    state.dont_fragment = 0;
     state.sport = 0; // to be initialized to a valid value by -sp option or addressLookup
-    state.dport = DEFAULT_DEST_PORT;
+    state.curr_dport = DEFAULT_DEST_PORT;
+    state.max_ttl = DEFAULT_MAX_TTL;
+    state.curr_ttl = 1; // ttl starts at 1 and gets incremented in each new probe
+    state.probes_per_ttl = DEFAULT_NUM_OF_PROBS;
+    state.is_iph_constructed = 0;
+    state.is_protoh_constructed = 0;
 
     // (*) options parsing
 
@@ -67,6 +72,11 @@ int main(int argc, char **argv) {
     }
 
     state.packet_len = packet_len;
+    state.packet = malloc(state.packet_len * sizeof(uint8_t));
+
+    if (state.packet == NULL) {
+        errorLogger(strerror(errno), EXIT_FAILURE);
+    }
 
     printf("%s\n", display_address);
 
@@ -94,16 +104,22 @@ int main(int argc, char **argv) {
 
     int sport;
     char local_address[MAX_IPV4_ADDR_LEN + 1] = {};
+    struct in_addr saddr = {};
 
-    if (addressLookup(local_address, &sport) == SOCKET_ERROR) {
+    if (addressLookup(local_address, &saddr, &sport) == SOCKET_ERROR) {
         errorLogger("address lookup failed", EXIT_FAILURE);
     }
 
     strncpy(state.local_address, local_address, MAX_IPV4_ADDR_LEN);
 
+    state.saddr = saddr;
+
     if (state.sport == 0) {
-        state.sport = sport;
+        state.sport = ntohs(sport); // convert to host byte order
     }
+
+    // (*) start tracerouting
+    start();
 
     return (0);
 }

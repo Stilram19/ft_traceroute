@@ -14,6 +14,6 @@ int createICMPRecvSocket(int *sock_fd);
 int createMethodSocket(int *sock_fd);
 
 // @brief uses the connect/getsockname trick to get the local interface to use
-int addressLookup(char *local_address, int *port);
+int addressLookup(char *local_address, struct in_addr *saddr, int *port);
 
 #endif

@@ -1,7 +1,7 @@
 NAME		=   ft_traceroute
 NAME_BONUS  =   ft_traceroute_bonus
 CC			=	gcc
-CFLAGS		=	-Wall -Wextra -Werror
+CFLAGS		=	-Wall -Wextra -Werror -D_DEFAULT_SOURCE
 INCLUDE		=	-Iinclude
 
 SRC_DIR		=	src

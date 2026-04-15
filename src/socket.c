@@ -32,7 +32,7 @@ int createMethodSocket(int *sock_fd) {
         return (SOCKET_ERROR);
     }
 
-    // setting the IP_HDRINCL option to be able to construct the IP header manually
+    // setting the IP_HDRINCL option to construct the IP header manually
     int one = 1;
     if (setsockopt(*sock_fd, IPPROTO_IP, IP_HDRINCL, &one, sizeof(one)) < 0) {
         return (SOCKET_ERROR);
@@ -55,8 +55,8 @@ int createICMPRecvSocket(int *sock_fd) {
     return (SOCKET_OK);
 }
 
-int addressLookup(char *local_address, int *port) {
-    if (!local_address || !port) {
+int addressLookup(char *local_address, struct in_addr *saddr, int *port) {
+    if (!local_address || !port || !saddr) {
         return (SOCKET_ERROR);
     }
     struct sockaddr_in dest_addr = {};
@@ -87,9 +87,11 @@ int addressLookup(char *local_address, int *port) {
         return (SOCKET_ERROR);
     }
 
+    *saddr = local_addr.sin_addr;
+
     char *address_str = inet_ntoa(local_addr.sin_addr);
     strncpy(local_address, address_str, MAX_IPV4_ADDR_LEN);
-    *port = ntohs(local_addr.sin_port);
+    *port = local_addr.sin_port;
     close(fd);
 
     return (SOCKET_OK);
